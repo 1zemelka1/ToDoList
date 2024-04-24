@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Todo List</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"] {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        li:last-child {
+            border-bottom: none;
+        }
+
+        .completed {
+            text-decoration: line-through;
+            color: #888;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Todo List</h1>
+        <form>
+            <input type="text" id="newTodo" placeholder="Enter a new todo item">
+            <button type="submit" id="addTodo">Add</button>
+        </form>
+        <ul id="todoList"></ul>
+    </div>
+
+    <script>
+        const apiUrl = 'https://localhost:5001/api/TodoItems';
+        const newTodoInput = document.getElementById('newTodo');
+        const addTodoButton = document.getElementById('addTodo');
+        const todoList = document.getElementById('todoList');
+
+        // Fetch and display todo items
+        function fetchTodoItems() {
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    todoList.innerHTML = '';
+                    data.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.classList.toggle('completed', item.isComplete);
+
+                        const todoText = document.createElement('span');
+                        todoText.textContent = item.name;
+                        todoText.addEventListener('dblclick', () => editTodoItem(item.id, todoText));
+
+                        const deleteButton = document.createElement('button');
+                        deleteButton.textContent = 'Delete';
+                        deleteButton.addEventListener('click', () => deleteTodoItem(item.id));
+
+                        const toggleButton = document.createElement('button');
+                        toggleButton.textContent = item.isComplete ? 'Undo' : 'Complete';
+                        toggleButton.addEventListener('click', () => toggleTodoItem(item.id, !item.isComplete, item.name));
+
+                        listItem.appendChild(todoText);
+                        listItem.appendChild(toggleButton);
+                        listItem.appendChild(deleteButton);
+                        todoList.appendChild(listItem);
+                    });
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+         // Edit todo item name
+         function editTodoItem(id, todoText) {
+            const newName = prompt('Enter the new name:', todoText.textContent);
+            if (newName !== null && newName.trim() !== '') {
+                fetch(`${apiUrl}/${id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ id, name: newName.trim(), isComplete: false })
+                })
+                    .then(() => fetchTodoItems())
+                    .catch(error => console.error('Error:', error));
+            }
+        }
+
+        // Add a new todo item
+        function addTodoItem(name) {
+            fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ name, isComplete: false })
+            })
+                .then(response => response.json())
+                .then(data => {
+                    fetchTodoItems();
+                    newTodoInput.value = '';
+                })
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Delete a todo item
+        function deleteTodoItem(id) {
+            fetch(`${apiUrl}/${id}`, {
+                method: 'DELETE'
+            })
+                .then(() => fetchTodoItems())
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Toggle todo item completion
+        function toggleTodoItem(id, isComplete, name) {
+            fetch(`${apiUrl}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id, name, isComplete })
+            })
+                .then(() => fetchTodoItems())
+                .catch(error => console.error('Error:', error));
+        }
+
+        // Initial fetch
+        fetchTodoItems();
+
+        // Add event listener for adding new todo items
+        addTodoButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            const name = newTodoInput.value.trim();
+            if (name) {
+                addTodoItem(name);
+            }
+        });
+    </script>
+</body>
+</html>
